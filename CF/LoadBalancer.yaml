@@ -1,0 +1,60 @@
+LoadBalancerSecurityGroup:
+  Type: AWS::EC2::SecurityGroup
+  Properties:
+    GroupDescription: Security group for loadbalancer
+    VpcId:
+      Fn::ImportValue:
+        !Join [ ":", [ !Ref EnvironmentName, "VPC" ]]
+    SecurityGroupIngress:
+      - CidrIp: 0.0.0.0/0
+        IpProtocol: -1
+
+LoadBalancer:
+  Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+  Properties:
+    Name: calculator-aws-lb
+    Subnets:
+      - Fn::ImportValue:
+        !Join [":", [ !Ref EnvironmentName, "SubnetAZ1Public" ]]
+      - Fn::ImportValue:
+        !Join [ ":", [ !Ref EnvironmentName, "SubnetAZ2Public" ]]
+    SecurityGroups:
+      - !Ref LoadBalancerSecurityGroup
+
+LoadBalancerListener:
+  Type: AWS::ElasticLoadBalancingV2::Listener
+  Properties:
+    LoadBalancerArn: !Ref LoadBalancer
+    Protocol: HTTP
+    Port: 80
+    DefaultActions:
+      - Type: forward
+        TargetGroupArn: !Ref DefaultTargetGroup
+
+DefaultTargetGroup:
+  Type: AWS::ElasticLoadBalancingV2::TargetGroup
+  Properties:
+    Name: aws-calculator-default
+    VpcId:
+      Fn::ImportValue:
+        !Join [ ":", [ !Ref EnvironmentName, "VPC" ]]
+    Protocol: HTTP
+    Port: 80
+
+Outputs:
+  LoadBalancerDNS:
+    Description: Domain name for the loadbalancer
+    Value: !GetAtt LoadBalancer.DNSName
+    Export:
+      Name: !Join [':', [ !Ref EnvironmentName, CcalculatorDomainName ]]
+  LoadBalancerListener:
+    Description: loadbalancer listener
+    Value: !Ref LoadBalancerListener
+    Export:
+      Name: !Join [':', [ !Ref EnvironmentName, CalculatorLoadBalancerListener ]]
+  LoadBalancerSecurityGroup:
+    Description: Loadbalancer security group
+    Value: !Ref LoadBalancerSecurityGroup
+    Export:
+      Name: !Join [':', [ !Ref EnvironmentName, CalculatorLoadBalancerSecurityGroup ]]
+
